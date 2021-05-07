@@ -1,5 +1,5 @@
 [package]
-name = "my_xmls"
+name = "my-xml-reader"
 version = "0.1.0"
 authors = ["Andrey <amigin@gmail.com>"]
 edition = "2018"
