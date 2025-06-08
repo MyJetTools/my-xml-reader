@@ -16,7 +16,7 @@ pub struct XmlTagInfo<'t> {
 }
 
 impl<'t> XmlTagInfo<'t> {
-    pub fn raw_as_strig(&self) -> &'t str {
+    pub fn raw_as_string(&self) -> &'t str {
         std::str::from_utf8(&self.raw).unwrap()
     }
 }
