@@ -1,3 +1,5 @@
+use crate::my_xml_reader::AttributesIterator;
+
 #[derive(Debug)]
 pub enum XmlTagType {
     Open = 0,
@@ -18,5 +20,9 @@ pub struct XmlTagInfo<'t> {
 impl<'t> XmlTagInfo<'t> {
     pub fn raw_as_string(&self) -> &'t str {
         std::str::from_utf8(&self.raw).unwrap()
+    }
+
+    pub fn iterate_attributes(&'t self) -> AttributesIterator<'t> {
+        AttributesIterator::new(self.raw)
     }
 }

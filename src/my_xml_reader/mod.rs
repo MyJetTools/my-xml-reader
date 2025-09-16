@@ -9,3 +9,5 @@ pub use xml_tag_info::XmlTagType;
 
 pub use my_xml_reader::MyXmlReader;
 pub use my_xml_reader::OpenedNode;
+mod attributes_iterator;
+pub use attributes_iterator::*;
