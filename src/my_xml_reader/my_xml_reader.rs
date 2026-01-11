@@ -115,35 +115,51 @@ impl<'t> MyXmlReader<'t> {
     }
 
     pub fn find_the_open_node(&mut self, x_path: &str) -> Result<Option<XmlTagInfo<'t>>, String> {
-        let paths = x_path.split('/');
+        let mut segments = x_path.split('/').peekable();
+        let mut current_parent: Option<XmlTagInfo<'t>> = None;
 
-        for node_name in paths {
-            loop {
-                {
+        while let Some(segment) = segments.next() {
+            let is_last = segments.peek().is_none();
+
+            let found = if let Some(parent) = current_parent.as_ref() {
+                self.find_the_node_inside_parent(parent, segment)?
+            } else {
+                // No parent yet: scan forward until we find the desired tag.
+                loop {
                     let node = self.read_next_tag()?;
 
                     if node.is_none() {
-                        return Ok(None);
+                        break None;
                     }
 
                     let node = node.unwrap();
 
-                    if node_name == node.name {
-                        match node.tag_type {
-                            XmlTagType::Open => {
-                                return Ok(Some(node));
-                            }
-                            XmlTagType::OpenClose => {
-                                return Ok(Some(node));
-                            }
-                            XmlTagType::Close => {}
+                    match node.tag_type {
+                        XmlTagType::Open | XmlTagType::OpenClose if node.name == segment => {
+                            break Some(node)
                         }
+                        _ => {}
                     }
                 }
+            };
+
+            let Some(found_node) = found else {
+                return Ok(None);
+            };
+
+            if is_last {
+                return Ok(Some(found_node));
             }
+
+            if matches!(found_node.tag_type, XmlTagType::OpenClose) {
+                // Self-closing node cannot contain deeper segments
+                return Ok(None);
+            }
+
+            current_parent = Some(found_node);
         }
 
-        return Ok(None);
+        Ok(None)
     }
 
     fn move_to_the_next_open_tag_pos(&mut self) -> Result<bool, String> {

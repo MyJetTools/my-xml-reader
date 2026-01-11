@@ -40,24 +40,27 @@ pub fn decode_xml_string(xml_string: &str) -> String {
 }
 
 fn skip_xml_header<'t>(xml: &'t [u8], start_pos: usize) -> Result<usize, String> {
-    let xml = &xml[start_pos..];
+    // Work with a slice that starts at the first '<' we saw, but keep track of
+    // the absolute offset so we return positions relative to the original
+    // buffer.
+    let xml_slice = &xml[start_pos..];
 
-    if !xml.starts_with(OPEN_HEADER_TOKEN) {
+    if !xml_slice.starts_with(OPEN_HEADER_TOKEN) {
         return Ok(start_pos);
     }
 
-    let close_header_pos = find_next_token_ext(xml, CLOSE_HEADER_TOKEN, start_pos);
+    let close_header_pos = find_next_token_ext(xml_slice, CLOSE_HEADER_TOKEN, 0);
 
     match close_header_pos {
         Some(end_header_pos) => {
             let pos = find_next_token(
-                xml,
+                xml_slice,
                 OPEN_TAG_TOKEN,
                 end_header_pos + CLOSE_HEADER_TOKEN.len(),
             );
 
             match pos {
-                Some(pos) => Ok(pos),
+                Some(pos) => Ok(start_pos + pos),
                 None => Err("Can not find root TAG after header Node".to_string()),
             }
         }
@@ -168,5 +171,40 @@ mod tests {
         let node_name = extract_tag_name(xml_src.as_bytes());
 
         assert_eq!("RootNode", std::str::from_utf8(node_name).unwrap());
+    }
+
+    #[test]
+    fn test_init_pos_start_with_header_and_leading_space() {
+        let xml_src = "   <?xml version=\"1.0\"?><Root/>";
+
+        let pos = init_pos_start(xml_src.as_bytes()).unwrap();
+
+        assert_eq!("<Root/>", &xml_src[pos..]);
+    }
+
+    #[test]
+    fn test_init_pos_start_with_header_and_bom() {
+        let xml_src = "\u{feff}<?xml version=\"1.0\"?><Root></Root>";
+        let bytes = xml_src.as_bytes();
+
+        let pos = init_pos_start(bytes).unwrap();
+
+        assert_eq!("<Root></Root>", std::str::from_utf8(&bytes[pos..]).unwrap());
+    }
+
+    #[test]
+    fn test_init_pos_start_without_header_and_leading_space() {
+        let xml_src = "   <Root></Root>";
+        let pos = init_pos_start(xml_src.as_bytes()).unwrap();
+
+        assert_eq!("<Root></Root>", &xml_src[pos..]);
+    }
+
+    #[test]
+    fn test_init_pos_start_with_header_and_gap_before_root() {
+        let xml_src = "<?xml version=\"1.0\"?>   <Root></Root>";
+        let pos = init_pos_start(xml_src.as_bytes()).unwrap();
+
+        assert_eq!("<Root></Root>", &xml_src[pos..]);
     }
 }
